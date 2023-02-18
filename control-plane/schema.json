@@ -1,0 +1,274 @@
+{
+    "$schema": "http://json-schema.org/schema#",
+    "$id": "http://switch.ch/schemas/packet_broker.json",
+
+    "definitions": {
+        "interface-config": {
+            "type": "object",
+            "required": [ "speed", "mtu" ],
+            
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+
+                "speed": {
+                    "type": "string",
+                    "enum": [
+                        "BF_SPEED_1G",
+                        "BF_SPEED_10G",
+                        "BF_SPEED_25G",
+                        "BF_SPEED_40G",
+                        "BF_SPEED_40G_NB",
+                        "BF_SPEED_40G_NON_BREAKABLE",
+                        "BF_SPEED_50G",
+                        "BF_SPEED_100G"
+                    ]
+                },
+                
+                "fec": {
+                    "type": "string",
+                    "enum": [
+                        "BF_FEC_TYP_NONE",
+                        "BF_FEC_TYP_FIRECODE",
+                        "BF_FEC_TYP_REED_SOLOMON",
+                        "BF_FEC_TYP_FC",
+                        "BF_FEC_TYP_RS"
+                    ]
+                },
+
+                "mtu": {
+                    "type": "integer",
+                    "minimum": 1200,
+                    "maximum": 10240
+                },
+
+                "shutdown": {
+                    "type": "boolean"
+                }
+            },
+            "additionalProperties": false
+        },
+
+        "port": {
+            "type": "object",
+            "patternProperties": {
+                "^[0-9]+/[0-9]+$": {
+                    "type": "object",
+                    "required": [ "config" ],
+
+                    "properties": {
+                        "config": {
+                            "$ref": "#/definitions/interface-config"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            }
+        },
+
+        "simple_port": {
+            "type": "object",
+            "patternProperties": {
+                "^[0-9]+/[0-9]+$": {
+                    "type": "object",
+
+                    "properties": {
+                        "config": {
+                            "$ref": "#/definitions/interface-config"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            }
+        },
+        
+        "logical-port-pattern": {
+            "type": "string",
+            "pattern": "^[0-9]+/[0-9]+$"
+        },
+
+        "logical-or-physical-port-pattern": {
+            "type": "string",
+            "pattern": "^([0-9]+/[0-9]+|[0-9]+)$"
+        },
+
+        "port-spec": {
+            "type": "object",
+            "properties": {
+                "port": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 65535
+                },
+                "mask": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 65535
+                }
+            }
+        },
+
+        "mac-rewrite": {
+            "type": "object",
+            "patternProperties": {
+                "^([a-f0-9]{2}:){5}[a-f0-9]{2}$": {
+                    "type": "string",
+                    "pattern": "^([a-f0-9]{2}:){5}[a-f0-9]{2}$"
+                }
+            },
+            "additionalProperties": false
+        }
+    },
+    
+    "type": "object",
+    "required": [ "ports" ],
+    
+    "properties": {
+        "ports": {
+            "type": "object",
+            "required": [ "port-config", "ingress", "egress" ],
+            
+            "properties": {
+		"port-config": {
+                    "$ref": "#/definitions/port"
+                },
+
+                "ingress": {
+                    "type": "object",
+                    "patternProperties": {
+                        "^[0-9]+/[0-9]+$": {
+                            "type": "object",
+                            "required": [ "egress-group" ],
+
+                            "properties": {
+                                
+                                "egress-group": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                }
+                                
+                            }
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                
+                "egress": {
+                    "type": "array",
+                    
+                    "items": {
+                        "type": "object",
+                        "required": [ "group-id", "members" ],
+                        
+                        "properties": {
+                            "group-id": {
+                                "type": "integer",
+                                "minimum": 1
+                            },
+			    
+			    "members": {
+				"$ref": "#/definitions/simple_port"
+                            }
+                        },
+                        "additionalProperties": false
+                    }
+                },
+
+                "other": {
+                    "$ref": "#/definitions/port"
+                }
+                
+            }
+        },
+        "source-filter": {
+            "type": "array",
+            
+            "items": {
+                "type": "string"
+            }
+        },
+
+        "flow-mirror": {
+            "type": "array",
+
+            "items": {
+                "type": "object",
+                "required": [ "src", "dst", "src_port", "dst_port" ],
+
+                "properties": {
+		    "ingress-ports": {
+			"type": "array",
+
+			"items": {
+			    "$ref": "#/definitions/logical-port-pattern"
+			}
+		    },
+		    "non-ip": {
+			"type": "boolean"
+		    },
+                    "src": {
+                        "type": "string"
+                    },
+                    "dst": {
+                        "type": "string"
+                    },
+                    "src_port": {
+                        "$ref": "#/definitions/port-spec"
+                    },
+                    "dst_port": {
+                        "$ref": "#/definitions/port-spec"
+                    },
+                    "bidir": {
+                        "type": "boolean"
+                    },
+                    "enable": {
+                        "type": "boolean"
+                    }
+                },
+                "additionalProperties": false
+            }
+        },
+        
+        "features": {
+            "type": "object",
+            
+            "properties": {
+                "deflect-on-drop": {
+                    "$ref": "#/definitions/logical-or-physical-port-pattern"
+                },
+
+                "flow-mirror": {
+                    "type": "object",
+                    "required": [ "port" ],
+                    "properties": {
+
+                        "port": {
+                            "$ref": "#/definitions/logical-or-physical-port-pattern"
+                        },
+                        "max-packet-length": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 16384
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                
+                "drop-non-initial-fragments": {
+                    "type": "boolean"
+                },
+                
+                "exclude-ports-from-hash": {
+                    "type": "boolean"
+                },
+
+                "drop-non-ip": {
+                    "type": "boolean"
+                }
+            },
+            "additionalProperties": false
+        }
+    },
+    "additionalProperties": false
+}
